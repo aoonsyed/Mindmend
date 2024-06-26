@@ -22,9 +22,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-h5-!87o9#!$p1h%6@r@ct=l4j_a=eu84l&wv6yh9qun*=wj=d9'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['admin.scowenpublishing.com']
 
 # Application definition
 
