@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser, Contact
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -32,3 +32,22 @@ class UserSignupSerializer(serializers.ModelSerializer):
             password=validated_data["password"],
         )
         return user
+
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = ['name', 'email', 'message']
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False)
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'image']
+
+    def validate_username(self, value):
+        user = self.context['request'].user
+        if CustomUser.objects.filter(username=value).exclude(id=user.id).exists():
+            raise serializers.ValidationError("Username already exists.")
+        return value

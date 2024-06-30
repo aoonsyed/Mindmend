@@ -1,7 +1,9 @@
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth import logout, authenticate, login
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.utils.encoding import force_str
@@ -10,11 +12,12 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from django.contrib.auth.tokens import default_token_generator
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import CustomUserSerializer, UserSignupSerializer
-from .models import CustomUser  # Adjust the import path as per your project's structure
+from .serializers import CustomUserSerializer, UserSignupSerializer, ContactMessageSerializer, \
+    UserProfileUpdateSerializer
+from .models import CustomUser, Contact  # Adjust the import path as per your project's structure
 
 
 class UserSignupViewSet(viewsets.ModelViewSet):
@@ -161,4 +164,37 @@ class PasswordResetConfirmView(APIView):
             return Response({'success': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
         else:
             print("Invalid token or user not found")
-            return Response({'error': 'The reset link is invalid or has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'error': 'The reset link is invalid or has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ContactUsAPIView(APIView):
+    def post(self, request, format=None):
+        serializer = ContactMessageSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            if Contact.objects.filter(email=email).exists():
+                return Response({'error': 'Email already exists in database.'}, status=status.HTTP_409_CONFLICT)
+            serializer.save()
+            return Response({'message': 'Message sent successfully.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserListAPIView(APIView):
+    def get(self, request, format=None):
+        users = CustomUser.objects.all()
+        serializer = CustomUserSerializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UserProfileUpdateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @csrf_exempt
+    def put(self, request, *args, **kwargs):
+        serializer = UserProfileUpdateSerializer(request.user, data=request.data, partial=True,
+                                                 context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

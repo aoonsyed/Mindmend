@@ -23,6 +23,9 @@ SECRET_KEY = 'django-insecure-h5-!87o9#!$p1h%6@r@ct=l4j_a=eu84l&wv6yh9qun*=wj=d9
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+if DEBUG:
+    CSRF_COOKIE_SECURE = False  # Set to True in production
+    CSRF_COOKIE_HTTPONLY = False
 
 ALLOWED_HOSTS = ['mindmend.pythonanywhere.com', '*']
 
@@ -36,24 +39,29 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'mindmend',
+    'django.contrib.sites',
+    'django_rest_passwordreset',
     'drf_yasg',
+    'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-]
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'emdr.urls'
 
@@ -130,11 +138,27 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ],
 }
 
+AUTHENTICATION_BACKENDS = [
+    'mindmend.authentication.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+    # Include the default backend as a fallback
+]
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'your-smtp-host'
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'aoonsyed72@gmail.com'
-EMAIL_HOST_PASSWORD = '@ooN121472'
+EMAIL_USE_TLS = True  # Gmail requires TLS encryption
+
+# Gmail account credentials (replace with your own)
+EMAIL_HOST_USER = 'your-email@gmail.com'
+EMAIL_HOST_PASSWORD = 'your-gmail-password'
+DEFAULT_FROM_EMAIL = 'your-email@gmail.com'
+
+SITE_ID = 1
