@@ -22,3 +22,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('mindmend/', include('mindmend.urls')),  # Include your app's URLs
 ]
+admin.site.site_title = "MindMend Site Admin"
+admin.site.site_header = "MindMend Administration"
+admin.site.index_title = "Site administration"

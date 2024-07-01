@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import *
-from . import views
+from . import views, admin
 
 # Instantiate your viewsets
 signup = UserSignupViewSet.as_view({"post": "create"})
@@ -18,3 +18,4 @@ urlpatterns = [
     path('profile/update/', UserProfileUpdateAPIView.as_view(), name='profile_update'),
 
 ]
+

@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -32,8 +33,10 @@ ALLOWED_HOSTS = ['mindmend.pythonanywhere.com', '*']
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    "admin_interface",
+    "colorfield",
     'django.contrib.auth',
+    'django.contrib.admin',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -162,3 +165,6 @@ EMAIL_HOST_PASSWORD = 'your-gmail-password'
 DEFAULT_FROM_EMAIL = 'your-email@gmail.com'
 
 SITE_ID = 1
+
+X_FRAME_OPTIONS = "SAMEORIGIN"  # allows you to use modals insated of popups
+SILENCED_SYSTEM_CHECKS = ["security.W019"]
