@@ -71,7 +71,7 @@ ROOT_URLCONF = 'emdr.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ["templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -137,32 +137,30 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'mindmend.CustomUser'
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-    ],
-    'DEFAULT_PARSER_CLASSES': [
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # 'rest_framework.authentication.TokenAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PARSER_CLASSES': (
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser',
-    ],
+    ),
 }
 
-AUTHENTICATION_BACKENDS = [
-    'mindmend.authentication.EmailBackend',
-    'django.contrib.auth.backends.ModelBackend',
-    # Include the default backend as a fallback
-]
+# AUTHENTICATION_BACKENDS = [
+#     'mindmend.authentication.EmailBackend',
+#     'django.contrib.auth.backends.ModelBackend',
+#     # Include the default backend as a fallback
+# ]
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
-EMAIL_USE_TLS = True  # Gmail requires TLS encryption
-
-# Gmail account credentials (replace with your own)
-EMAIL_HOST_USER = 'your-email@gmail.com'
-EMAIL_HOST_PASSWORD = 'your-gmail-password'
-DEFAULT_FROM_EMAIL = 'your-email@gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "hannanmalik0321@gmail.com"
+EMAIL_HOST_PASSWORD = "ptmtokcfhztuwcwg"
 
 SITE_ID = 1
 

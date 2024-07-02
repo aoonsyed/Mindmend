@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, Contact
+from .models import CustomUser, Contact, Scores
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -51,3 +51,16 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         if CustomUser.objects.filter(username=value).exclude(id=user.id).exists():
             raise serializers.ValidationError("Username already exists.")
         return value
+
+class ScoresSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Scores
+        fields = ['user', 'before_therapy', 'after_therapy', 'general_emotion', 'selected_emotions']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['user'] = instance.user.username  # Assuming you want to show the username instead of the user ID
+        representation['selected_emotions'] = [emotion.name for emotion in instance.selected_emotions.all()]
+        return representation
+
+

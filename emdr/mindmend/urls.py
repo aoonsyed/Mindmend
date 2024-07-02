@@ -16,6 +16,7 @@ urlpatterns = [
     path('contact-us/', ContactUsAPIView.as_view(), name='contact_us'),
     path('users/', UserListAPIView.as_view(), name='user_list'),
     path('profile/update/', UserProfileUpdateAPIView.as_view(), name='profile_update'),
+    path('user_therapy_info/', UserTherapyInfoAPIView.as_view(), name='user_therapy_info'),
 
 ]
 
