@@ -1,11 +1,10 @@
-from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+from django.contrib.auth.models import AbstractUser, Group, Permission
 
 class CustomUser(AbstractUser):
     otp_check = models.IntegerField(default=0)
-    uid = models.CharField(max_length=500, default="", null=True, blank= True)
+    uid = models.CharField(max_length=500, default="", null=True, blank=True)
     image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
 
     groups = models.ManyToManyField(
@@ -82,9 +81,19 @@ class Scores(models.Model):
     )
     selected_emotions = models.ManyToManyField(Emotion, related_name='current_scores')
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        ScoreRecord.objects.create(
+            user=self.user,
+            before_therapy=self.before_therapy,
+            after_therapy=self.after_therapy,
+            general_emotion=self.general_emotion,
+        ).selected_emotions.set(self.selected_emotions.all())
+
     def __str__(self):
         selected_emotions_names = ', '.join([e.name for e in self.selected_emotions.all()])
         return f"{self.user.username} - Before: {self.before_therapy} - After: {self.after_therapy} - General: {self.general_emotion} - Selected: {selected_emotions_names}"
+
 
 class ScoreRecord(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='score_records')

@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from django.apps import AppConfig
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group, Permission
-from .models import CustomUser, Contact, Scores, Subscription, Emotion
+from .models import CustomUser, Contact, Scores, Subscription, Emotion, ScoreRecord
 
 
 class SubscriptionInline(admin.TabularInline):
@@ -130,6 +130,7 @@ admin.site.register(Contact, ContactAdmin)
 admin.site.register(Subscription, SubscriptionAdmin)
 admin.site.register(Emotion, EmotionAdmin)
 admin.site.register(Scores, ScoresAdmin)
+admin.site.register(ScoreRecord)
 
 
 # Ensure this code runs only after Django is fully initialized

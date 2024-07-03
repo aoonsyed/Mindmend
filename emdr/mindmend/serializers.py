@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, Contact, Scores
+from .models import CustomUser, Contact, Scores, Emotion, ScoreRecord
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -42,6 +42,7 @@ class ContactMessageSerializer(serializers.ModelSerializer):
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
+
     class Meta:
         model = CustomUser
         fields = ['username', 'image']
@@ -52,10 +53,18 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Username already exists.")
         return value
 
+
 class ScoresSerializer(serializers.ModelSerializer):
+    selected_emotions = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Emotion.objects.all()
+    )
+
     class Meta:
         model = Scores
         fields = ['user', 'before_therapy', 'after_therapy', 'general_emotion', 'selected_emotions']
+        extra_kwargs = {
+            'user': {'required': False}  # Ensure user is not required during validation
+        }
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -64,3 +73,16 @@ class ScoresSerializer(serializers.ModelSerializer):
         return representation
 
 
+class ScoreRecordSerializer(serializers.ModelSerializer):
+    selected_emotions = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Emotion.objects.all()
+    )
+
+    class Meta:
+        model = ScoreRecord
+        fields = ['before_therapy', 'after_therapy', 'general_emotion', 'selected_emotions', 'created_at']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['selected_emotions'] = [emotion.name for emotion in instance.selected_emotions.all()]
+        return representation

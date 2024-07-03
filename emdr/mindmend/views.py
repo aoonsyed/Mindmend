@@ -15,9 +15,10 @@ from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import CustomUserSerializer, UserSignupSerializer, ContactMessageSerializer, \
-    UserProfileUpdateSerializer, ScoresSerializer
-from .models import CustomUser, Contact, Scores
+    UserProfileUpdateSerializer, ScoresSerializer, ScoreRecordSerializer
+from .models import CustomUser, Contact, Scores, Emotion, ScoreRecord
 from django.conf import settings
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserSignupViewSet(viewsets.ModelViewSet):
@@ -93,7 +94,7 @@ class LoginView(APIView):
         if user:
             login(request, user)
             refresh = RefreshToken.for_user(user)
-            data= {
+            data = {
                 "refresh_token": str(refresh),
                 "access_token": str(refresh.access_token),
                 "email": email,
@@ -175,58 +176,69 @@ class PasswordResetView(APIView):
                 break
         user.uid = code
         user.save()
-        reset_url = f"http://127.0.0.1:8000/mindmend/reset-password/confirm/?uid={code}"
+        reset_url = f"http://adminmend.pythonanywhere.com/mindmend/reset-password/confirm/?uid={code}"
 
         text_content = "This is an important message."
         htmly = get_template("forget_password.html")
         d = {"otp": reset_url}
         html_content = htmly.render(d)
         msg = EmailMultiAlternatives(
-            "OTP for EzyUsers", text_content, settings.EMAIL_HOST_USER, [user.email]
+            "Password Reset Link", text_content, settings.EMAIL_HOST_USER, [user.email]
         )
         msg.attach_alternative(html_content, "text/html")
         msg.send()
 
-        # Print the reset URL in the terminal for testing purposes
-        print(f"Password reset URL: {reset_url}")
-
-        # Normally, you would send the reset URL via email here
-
         return Response({
             'message': 'Password reset link has been sent to your email.',
-            'reset_url': reset_url,
-            'uid': code,
-
         }, status=status.HTTP_200_OK)
 
 
 class PasswordResetConfirmView(APIView):
-    def post(self, request):
-        uidb64 = request.data.get('uid')
-        new_password = request.data.get('new_password')
+    permission_classes = [AllowAny]
 
-        print(f"Received uid: {uidb64}, new_password: {new_password}")
+    def post(self, request, *args, **kwargs):
+        uid = request.data.get('UID')  # Changed from query_params to data
+        new_password = request.data.get('new_password')
+        email = request.data.get('email')
+
+        if not uid or not new_password or not email:
+            return Response(
+                {"message": "UID, new password, and email are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = CustomUser.objects.filter(email=email).first()
+        if not user:
+            return Response({'message': 'User with this email does not exist.'},
+                            status=status.HTTP_404_NOT_FOUND)
 
         try:
-            # Decode the uid to get the user id
-            uid = urlsafe_base64_decode(uidb64).decode()
-            print(f"Decoded uid: {uid}")
-            User = get_user_model()
-            user = User.objects.get(pk=uid)
-            print(f"User found: {user.email}")
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist) as e:
-            print(f"Error decoding uid or user does not exist: {e}")
-            user = None
+            if str(user.uid) != uid:
+                raise ValueError("UID does not match")
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist) as e:
+            return Response(
+                {"message": "The reset link is invalid or has expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        if user is not None and default_token_generator.check_token(user, token):
-            user.set_password(new_password)
-            user.save()
-            print("Password reset successful")
-            return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
-        else:
-            print("Invalid token or user not found")
+        user.set_password(new_password)
+        user.uid = None  # Invalidate the UID after password reset
+        user.save()
+        data = {
+            "email": email,
+            "user_id": user.id,
+        }
+        return Response({
+            "data": data,
+            'message': 'Password has been reset successfully.'},
+            status=status.HTTP_200_OK)
 
-        return Response({'message': 'The reset link is invalid or has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import ContactMessageSerializer
+from .models import Contact
 
 
 class ContactUsAPIView(APIView):
@@ -234,11 +246,23 @@ class ContactUsAPIView(APIView):
         serializer = ContactMessageSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
+            # Check if the email already exists
             if Contact.objects.filter(email=email).exists():
                 return Response({'message': 'Email already exists in database.'}, status=status.HTTP_409_CONFLICT)
-            serializer.save()
-            return Response({'message': 'Message sent successfully.'}, status=status.HTTP_201_CREATED)
-        return Response({'message': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Save the serializer instance
+            contact_instance = serializer.save()
+
+            # Prepare data for response
+            data = {
+                'email': email,
+                'message': serializer.validated_data['message'],  # Retrieve the message from validated data
+                'contact_id': contact_instance.id,  # Assuming you want to send the ID of the Contact instance
+            }
+
+            return Response({'data': data, 'message': 'Message sent successfully.'}, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserListAPIView(APIView):
@@ -264,28 +288,48 @@ class UserProfileUpdateAPIView(APIView):
 class UserTherapyInfoAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        """
-        Get therapy info for the authenticated user.
-        """
-        try:
-            scores = Scores.objects.get(user=request.user)
-            serializer = ScoresSerializer(scores)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Scores.DoesNotExist:
-            return Response({'message': 'Scores not found for the user.'}, status=status.HTTP_404_NOT_FOUND)
-
     def post(self, request):
         """
         Create or update therapy info for the authenticated user.
         """
-        try:
-            scores = Scores.objects.get(user=request.user)
-            serializer = ScoresSerializer(scores, data=request.data, partial=True)
-        except Scores.DoesNotExist:
-            serializer = ScoresSerializer(data=request.data)
+        request_data = request.data.copy()
+        request_data['user'] = request.user.id
+
+
+        scores = Scores.objects.filter(user=request.user).first()
+        if scores:
+            serializer = ScoresSerializer(scores, data=request_data, partial=True)
+        else:
+            serializer = ScoresSerializer(data=request_data)
 
         if serializer.is_valid():
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            serializer.save(user=request.user)  # Ensure the user is saved
+            return Response({
+                'message': 'Therapy info created/updated successfully.',
+                'data': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                'message': 'Failed to create/update therapy info.',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserScoreRecordsViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        """
+        List all score records for the authenticated user.
+        """
+        user = request.user
+        score_records = ScoreRecord.objects.filter(user=user)
+        serializer = ScoreRecordSerializer(score_records, many=True)
+        return Response({
+            'message': 'Score records retrieved successfully.',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+
+
