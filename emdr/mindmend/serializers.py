@@ -1,19 +1,86 @@
+from datetime import timedelta, datetime
+
+from django.core.validators import RegexValidator
 from rest_framework import serializers
-from .models import CustomUser, Contact, Scores, Emotion, ScoreRecord
+from .models import CustomUser, Contact, Scores, Emotion, ScoreRecord, Subscription
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ["email", "password"]
+        fields = ['id', 'name', 'email', 'image']
 
+
+class SubscriptionDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ['id', 'subscription', 'is_active', 'payment_date', 'expiry_date']
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    user = CustomUserSerializer(read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = ['id', 'user', 'subscription', 'amount', 'expiry_date', 'is_active', 'payment_date', 'description']
+
+
+class SubscriptionCreateSerializer(serializers.ModelSerializer):
+    subscription_id = serializers.IntegerField(write_only=True)
+    subscription = serializers.CharField(source='get_subscription_display', read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = ['subscription_id', 'subscription', 'amount', 'expiry_date', 'is_active', 'payment_date',
+                  'description']
+        extra_kwargs = {
+            'amount': {'required': False},
+            'expiry_date': {'required': False},
+            'is_active': {'required': False},
+            'payment_date': {'required': False},
+            'description': {'required': False},
+        }
+
+    def create(self, validated_data):
+        subscription_id = validated_data.pop('subscription_id')
+        subscription_instance = Subscription.objects.get(id=subscription_id)
+        validated_data['subscription'] = subscription_instance.subscription
+
+        payment_date = datetime.now().date()
+
+        if subscription_instance.subscription == 'free':
+            expiry_date = payment_date + timedelta(days=14)
+            description = "Free"
+        elif subscription_instance.subscription == 'monthly':
+            expiry_date = payment_date + timedelta(days=30)
+            description = "Full Customisation and Tracking"
+        elif subscription_instance.subscription == 'yearly':
+            expiry_date = payment_date + timedelta(days=365)
+            description = "Full Customisation and Tracking"
+        else:
+            expiry_date = payment_date  # Default case, although ideally, this shouldn't be hit
+            description = "No description available"
+
+        validated_data['expiry_date'] = expiry_date
+        validated_data['payment_date'] = payment_date
+        validated_data['description'] = description
+
+        return super().create(validated_data)
 
 class UserSignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    username = serializers.CharField(
+        validators=[
+            RegexValidator(
+                regex=r'^[\w.@+\-\s]+$',
+                message="Enter a valid username. This value may contain only letters, numbers, and @/./+/-/_/ spaces characters."
+            )
+        ]
+    )
 
     class Meta:
         model = CustomUser
-        fields = ["username", "email", "password"]
+        fields = ["name", "email", "password"]
 
     def validate_username(self, value):
         if CustomUser.objects.filter(username=value).exists():
@@ -27,7 +94,7 @@ class UserSignupSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = CustomUser.objects.create_user(
-            username=validated_data["username"],
+            username=validated_data["name"],
             email=validated_data["email"],
             password=validated_data["password"],
         )
@@ -40,20 +107,6 @@ class ContactMessageSerializer(serializers.ModelSerializer):
         fields = ['name', 'email', 'message']
 
 
-class UserProfileUpdateSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(required=False)
-
-    class Meta:
-        model = CustomUser
-        fields = ['username', 'image']
-
-    def validate_username(self, value):
-        user = self.context['request'].user
-        if CustomUser.objects.filter(username=value).exclude(id=user.id).exists():
-            raise serializers.ValidationError("Username already exists.")
-        return value
-
-
 class ScoresSerializer(serializers.ModelSerializer):
     selected_emotions = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Emotion.objects.all()
@@ -61,14 +114,29 @@ class ScoresSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Scores
-        fields = ['user', 'before_therapy', 'after_therapy', 'general_emotion', 'selected_emotions']
+        fields = ['user', 'image_value', 'general_emotion_value', 'revaluation_one', 'revaluation_two',
+                  'selected_emotions']
         extra_kwargs = {
             'user': {'required': False}  # Ensure user is not required during validation
         }
 
+    def create(self, validated_data):
+        selected_emotions = validated_data.pop('selected_emotions', [])
+        scores = Scores.objects.create(**validated_data)
+        scores.selected_emotions.set(selected_emotions)
+        return scores
+
+    def update(self, instance, validated_data):
+        selected_emotions = validated_data.pop('selected_emotions', [])
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        instance.selected_emotions.set(selected_emotions)
+        return instance
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['user'] = instance.user.username  # Assuming you want to show the username instead of the user ID
+        representation['user'] = instance.user.name  # Assuming you want to show the username instead of the user ID
         representation['selected_emotions'] = [emotion.name for emotion in instance.selected_emotions.all()]
         return representation
 
@@ -80,9 +148,25 @@ class ScoreRecordSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ScoreRecord
-        fields = ['before_therapy', 'after_therapy', 'general_emotion', 'selected_emotions', 'created_at']
+        fields = ['image_value', 'general_emotion_value', 'revaluation_one', 'revaluation_two', 'selected_emotions',
+                  'created_at']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['selected_emotions'] = [emotion.name for emotion in instance.selected_emotions.all()]
         return representation
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        validators=[
+            RegexValidator(
+                regex=r'^[\w.@+\-\s]+$',
+                message="Enter a valid name. This value may contain only letters, numbers, and @/./+/-/_/ spaces characters."
+            )
+        ]
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = ['name', 'image']

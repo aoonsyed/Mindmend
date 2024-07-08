@@ -3,7 +3,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from django.apps import AppConfig
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.models import Group
 from .models import CustomUser, Contact, Scores, Subscription, Emotion, ScoreRecord
 
 
@@ -34,14 +34,14 @@ class CustomUserAdmin(BaseUserAdmin):
     model = CustomUser
 
     list_display = (
-        'thumbnail', 'username', 'email', 'is_staff',
+        'thumbnail', 'name', 'email', 'is_staff',
         'get_subscriptions', 'get_scores'
     )
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
     search_fields = ('username', 'email')
 
     fieldsets = (
-        (None, {'fields': ('username', 'password')}),
+        (None, {'fields': ('name', 'password')}),
         ('Personal info', {'fields': ('email', 'image')}),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
@@ -51,12 +51,12 @@ class CustomUserAdmin(BaseUserAdmin):
         (None, {
             'classes': ('wide',),
             'fields': (
-                'username', 'password', 'email', 'image',
+                'name', 'password', 'email', 'image',
                 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
     )
 
-    ordering = ('username',)
+    ordering = ('name',)
     inlines = [SubscriptionInline, ScoresInline]
 
     def thumbnail(self, obj):
@@ -76,9 +76,10 @@ class CustomUserAdmin(BaseUserAdmin):
         scores = Scores.objects.filter(user=obj)
         if scores.exists():
             score = scores.first()
-            return f"Before: {score.before_therapy}, " \
-                   f"After: {score.after_therapy}, " \
-                   f"General Emotion: {score.general_emotion}"
+            return f"Image Value: {score.image_value}, " \
+                   f"General Emotion: {score.general_emotion_value}, " \
+                   f"Revaluation One: {score.revaluation_one}, " \
+                   f"Revaluation Two: {score.revaluation_two}"
         return "No Scores"
 
     get_scores.short_description = 'Scores'
@@ -93,7 +94,7 @@ class ContactAdmin(admin.ModelAdmin):
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ('user', 'subscription', 'amount', 'expiry_date', 'is_active', 'payment_date')
     list_filter = ('subscription', 'is_active', 'payment_date', 'expiry_date')
-    search_fields = ('user__username', 'user__email')
+    search_fields = ('user__name', 'user__email')
 
     def save_model(self, request, obj, form, change):
         if obj.subscription == 'monthly':
@@ -110,13 +111,33 @@ class EmotionAdmin(admin.ModelAdmin):
 class ScoresAdmin(admin.ModelAdmin):
     list_display = (
         'user',
-        'before_therapy',
-        'after_therapy',
-        'general_emotion',
+        'image_value',
+        'general_emotion_value',
+        'revaluation_one',
+        'revaluation_two',
         'get_selected_emotions'
     )
-    search_fields = ('user__username', 'user__email')
-    list_filter = ('before_therapy', 'after_therapy', 'general_emotion')
+    search_fields = ('user__name', 'user__email')
+    list_filter = ('image_value', 'general_emotion_value', 'revaluation_one', 'revaluation_two')
+
+    def get_selected_emotions(self, obj):
+        return ", ".join([e.name for e in obj.selected_emotions.all()])
+
+    get_selected_emotions.short_description = 'Selected Emotions'
+
+
+class ScoreRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        'user',
+        'image_value',
+        'general_emotion_value',
+        'revaluation_one',
+        'revaluation_two',
+        'get_selected_emotions',
+        'created_at'
+    )
+    search_fields = ('user__name', 'user__email')
+    list_filter = ('image_value', 'general_emotion_value', 'revaluation_one', 'revaluation_two', 'created_at')
 
     def get_selected_emotions(self, obj):
         return ", ".join([e.name for e in obj.selected_emotions.all()])
@@ -130,7 +151,7 @@ admin.site.register(Contact, ContactAdmin)
 admin.site.register(Subscription, SubscriptionAdmin)
 admin.site.register(Emotion, EmotionAdmin)
 admin.site.register(Scores, ScoresAdmin)
-admin.site.register(ScoreRecord)
+admin.site.register(ScoreRecord, ScoreRecordAdmin)
 
 
 # Ensure this code runs only after Django is fully initialized
