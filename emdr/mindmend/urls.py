@@ -11,7 +11,7 @@ from .views import (
     UserTherapyInfoAPIView,
     UserSignupViewSet,
     UserLogoutViewSet,
-    UserScoreRecordsViewSet, SubscriptionCreateView, SubscriptionListView, AppleLogin, GoogleLogin
+    UserScoreRecordsViewSet, SubscriptionCreateView, SubscriptionListView, AppleLogin, GoogleLogin, password_reset_form
 )
 
 # Instantiate your viewsets
@@ -26,6 +26,7 @@ urlpatterns = [
     path('signup/', signup, name='signup'),
     path('reset-password/', PasswordResetView.as_view(), name='password_reset'),
     path('reset-password/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset-password/form/<str:uid>/', password_reset_form, name='password_reset_form'),
     path('logout/', logout, name='logout'),
     path('contact-us/', ContactUsAPIView.as_view(), name='contact_us'),
     path('users/', UserListAPIView.as_view(), name='user_list'),

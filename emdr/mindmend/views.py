@@ -1,5 +1,5 @@
 import random
-
+from django.shortcuts import render
 from django.utils import timezone
 from io import BytesIO
 from PIL import Image
@@ -227,13 +227,16 @@ class PasswordResetView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Generate a unique UID
         while True:
             code = random.randint(1000000, 9999999)
             if not CustomUser.objects.filter(uid=code).exists():
                 break
+
         user.uid = code
         user.save()
-        reset_url = f" https://emdradmin.pythonanywhere.com/mindmend/reset-password/confirm/?uid={code}"
+
+        reset_url = f"http://127.0.0.1:8000/mindmend/reset-password/form/{code}/"
 
         text_content = f"Please click the following link to reset your password: {reset_url}"
         html_content = f"""
@@ -245,6 +248,7 @@ class PasswordResetView(APIView):
             </body>
         </html>
         """
+
         msg = EmailMultiAlternatives(
             "Password Reset Link", text_content, settings.EMAIL_HOST_USER, [user.email]
         )
@@ -255,7 +259,6 @@ class PasswordResetView(APIView):
             {'message': 'Password reset link has been sent to your email.'},
             status=status.HTTP_200_OK
         )
-
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
@@ -284,6 +287,14 @@ class PasswordResetConfirmView(APIView):
             {"message": "Password has been reset successfully.", "data": {"user_id": user.id}},
             status=status.HTTP_200_OK
         )
+
+    # views.py
+
+
+def password_reset_form(request, uid):
+    return render(request, 'forget_password.html', {'uid': uid})
+
+
 class ContactUsAPIView(APIView):
     def post(self, request, format=None):
         serializer = ContactMessageSerializer(data=request.data)
