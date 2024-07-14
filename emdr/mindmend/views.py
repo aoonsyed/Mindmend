@@ -236,7 +236,7 @@ class PasswordResetView(APIView):
         user.uid = code
         user.save()
 
-        reset_url = f"http://127.0.0.1:8000/mindmend/reset-password/form/{code}/"
+        reset_url = f"https://emdradmin.pythonanywhere.com/mindmend/reset-password/form/{code}/"
 
         text_content = f"Please click the following link to reset your password: {reset_url}"
         html_content = f"""
@@ -288,7 +288,6 @@ class PasswordResetConfirmView(APIView):
             status=status.HTTP_200_OK
         )
 
-    # views.py
 
 
 def password_reset_form(request, uid):
@@ -364,16 +363,16 @@ class UserTherapyInfoAPIView(APIView):
             scores = serializer.save(user=request.user)
             if 'selected_emotions' in request_data:
                 scores.selected_emotions.set(request_data['selected_emotions'])
+                # Ensure the score record reflects the latest emotions
+                scores.create_score_record()
             return Response(
-                {"message": "User therapy info created successfully.", "data": serializer.data},
+                {"message": "User therapy info created/updated successfully.", "data": serializer.data},
                 status=status.HTTP_201_CREATED
             )
         return Response(
-            {"message": "Failed to create user therapy info.", "data": serializer.errors},
+            {"message": "Failed to create/update user therapy info.", "data": serializer.errors},
             status=status.HTTP_400_BAD_REQUEST
         )
-
-
 class UserScoreRecordsViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
@@ -383,7 +382,7 @@ class UserScoreRecordsViewSet(viewsets.ViewSet):
 
         if not score_records.exists():
             return Response(
-                {"message": "No scores for the user.", "data": []},
+                {"message": "No score records for the user.", "data": []},
                 status=status.HTTP_200_OK
             )
 
@@ -392,7 +391,6 @@ class UserScoreRecordsViewSet(viewsets.ViewSet):
             {"message": "Score records retrieved successfully.", "data": serializer.data},
             status=status.HTTP_200_OK
         )
-
 
 import logging
 
