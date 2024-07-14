@@ -14,7 +14,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 class SubscriptionDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
-        fields = ['id', 'subscription', 'is_active', 'payment_date', 'expiry_date']
+        fields = ['id', 'subscription', 'is_active', 'payment_date', 'expiry_date', 'amount', 'subscription_map_id']
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -31,30 +31,41 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscription
-        fields = ['subscription_id', 'subscription', 'amount', 'expiry_date', 'is_active', 'payment_date',
-                  'description']
+        fields = ['subscription_id', 'subscription', 'amount', 'expiry_date', 'is_active', 'payment_date', 'description', 'subscription_map_id']
         extra_kwargs = {
             'amount': {'required': False},
             'expiry_date': {'required': False},
             'is_active': {'required': False},
             'payment_date': {'required': False},
             'description': {'required': False},
+            'subscription_map_id': {'required': False},
         }
+
+    SUBSCRIPTION_ID_MAP = {
+        1: 'free',
+        2: 'monthly',
+        3: 'yearly',
+    }
 
     def create(self, validated_data):
         subscription_id = validated_data.pop('subscription_id')
-        subscription_instance = Subscription.objects.get(id=subscription_id)
-        validated_data['subscription'] = subscription_instance.subscription
+        subscription_type = self.SUBSCRIPTION_ID_MAP.get(subscription_id)
+
+        if not subscription_type:
+            raise serializers.ValidationError("Invalid subscription ID.")
+
+        validated_data['subscription'] = subscription_type
+        validated_data['subscription_map_id'] = subscription_id  # Set the subscription_map_id
 
         payment_date = datetime.now().date()
 
-        if subscription_instance.subscription == 'free':
+        if subscription_type == 'free':
             expiry_date = payment_date + timedelta(days=14)
             description = "Free"
-        elif subscription_instance.subscription == 'monthly':
+        elif subscription_type == 'monthly':
             expiry_date = payment_date + timedelta(days=30)
             description = "Full Customisation and Tracking"
-        elif subscription_instance.subscription == 'yearly':
+        elif subscription_type == 'yearly':
             expiry_date = payment_date + timedelta(days=365)
             description = "Full Customisation and Tracking"
         else:
@@ -65,7 +76,13 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
         validated_data['payment_date'] = payment_date
         validated_data['description'] = description
 
-        return super().create(validated_data)
+        subscription = super().create(validated_data)
+        return subscription
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return representation
+
 
 class UserSignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

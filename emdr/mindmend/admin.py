@@ -38,7 +38,7 @@ class CustomUserAdmin(BaseUserAdmin):
         'get_subscriptions', 'get_scores'
     )
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
-    search_fields = ('username', 'email')
+    search_fields = ('email', 'name')
 
     fieldsets = (
         (None, {'fields': ('name', 'password')}),
@@ -51,12 +51,12 @@ class CustomUserAdmin(BaseUserAdmin):
         (None, {
             'classes': ('wide',),
             'fields': (
-                'name', 'password', 'email', 'image',
+                'name', 'password1', 'password2', 'email', 'image',
                 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
     )
 
-    ordering = ('name',)
+    ordering = ('email',)
     inlines = [SubscriptionInline, ScoresInline]
 
     def thumbnail(self, obj):

@@ -11,7 +11,7 @@ from .views import (
     UserTherapyInfoAPIView,
     UserSignupViewSet,
     UserLogoutViewSet,
-    UserScoreRecordsViewSet, SubscriptionCreateView, SubscriptionListView,
+    UserScoreRecordsViewSet, SubscriptionCreateView, SubscriptionListView, AppleLogin, GoogleLogin
 )
 
 # Instantiate your viewsets
@@ -33,6 +33,8 @@ urlpatterns = [
     path('user_therapy_info/', UserTherapyInfoAPIView.as_view(), name='user_therapy_info'),
     path('subscriptions/', SubscriptionListView.as_view(), name='subscription-list'),
     path('subscriptions/create/', SubscriptionCreateView.as_view(), name='subscription-create'),
+    path('google_login/', GoogleLogin.as_view(), name='google_login'),
+    path('login_apple/', AppleLogin.as_view(), name='apple-login'),
 
     path('', include(router.urls)),
 ]

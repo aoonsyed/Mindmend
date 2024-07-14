@@ -1,7 +1,9 @@
+from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.contrib.auth.models import Group, Permission
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, name, password=None, **extra_fields):
@@ -23,6 +25,7 @@ class CustomUserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self.create_user(email, name, password, **extra_fields)
+
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=255)
@@ -56,6 +59,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email  # Change to email or name as per your preference
 
+
 class Contact(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
@@ -72,7 +76,7 @@ class Subscription(models.Model):
         ('yearly', 'Yearly'),
     ]
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     subscription = models.CharField(max_length=10, choices=SUBSCRIPTION_CHOICES)
     amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     expiry_date = models.DateField()
@@ -80,6 +84,7 @@ class Subscription(models.Model):
     payment_date = models.DateField(auto_now_add=True)
     description = models.TextField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+    subscription_map_id = models.IntegerField(null=True, blank=True)  # New field
 
     def save(self, *args, **kwargs):
         if self.subscription == 'free':
@@ -98,6 +103,7 @@ class Emotion(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class Scores(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='scores')
@@ -133,6 +139,7 @@ class Scores(models.Model):
     def __str__(self):
         selected_emotions_names = ', '.join([e.name for e in self.selected_emotions.all()])
         return f"{self.user.name} - Image {self.image_value} - General Emotion: {self.general_emotion_value} - Revaluation One: {self.revaluation_one} - Revaluation Two: {self.revaluation_two} - Selected: {selected_emotions_names}"
+
 
 class ScoreRecord(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='score_records')
