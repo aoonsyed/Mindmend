@@ -35,7 +35,7 @@ urlpatterns = [
     path('subscriptions/', SubscriptionListView.as_view(), name='subscription-list'),
     path('subscriptions/create/', SubscriptionCreateView.as_view(), name='subscription-create'),
     path('google_login/', GoogleLogin.as_view(), name='google_login'),
-    path('login_apple/', AppleLogin.as_view(), name='apple-login'),
+    path('apple_login/', AppleLogin.as_view(), name='apple-login'),
 
     path('', include(router.urls)),
 ]

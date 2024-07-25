@@ -21,6 +21,9 @@ from .serializers import CustomUserSerializer, ContactMessageSerializer, \
 from .models import CustomUser, Contact, Scores, Emotion, ScoreRecord, Subscription
 from django.conf import settings
 
+import logging
+
+logger = logging.getLogger(__name__)
 CustomUser = get_user_model()
 
 
@@ -366,19 +369,26 @@ class UserTherapyInfoAPIView(APIView):
                 # Ensure the score record reflects the latest emotions
                 scores.create_score_record()
             return Response(
-                {"message": "User therapy info created/updated successfully.", "data": serializer.data},
+                {"message": "User therapy info created successfully.", "data": serializer.data},
                 status=status.HTTP_201_CREATED
             )
         return Response(
-            {"message": "Failed to create/update user therapy info.", "data": serializer.errors},
+            {"message": "Failed to create user therapy info.", "data": serializer.errors},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+from django.db.models import Count
+
 class UserScoreRecordsViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
         user = request.user
-        score_records = ScoreRecord.objects.filter(user=user)
+        # Annotate score records with the count of selected_emotions
+        score_records = ScoreRecord.objects.filter(user=user).annotate(
+            num_selected_emotions=Count('selected_emotions')
+        ).filter(num_selected_emotions__gt=0)
 
         if not score_records.exists():
             return Response(
@@ -392,9 +402,6 @@ class UserScoreRecordsViewSet(viewsets.ViewSet):
             status=status.HTTP_200_OK
         )
 
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class UserProfileUpdateAPIView(APIView):
