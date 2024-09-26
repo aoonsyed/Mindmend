@@ -15,7 +15,8 @@ from .views import (
 )
 
 # Instantiate your viewsets
-signup = UserSignupViewSet.as_view({"post": "create"})
+
+signup = UserSignupViewSet.as_view({"post": "create", "delete": "destroy"})
 logout = UserLogoutViewSet.as_view({"post": "logout"})
 
 router = DefaultRouter()
@@ -24,6 +25,7 @@ router.register(r'score-records', UserScoreRecordsViewSet, basename='score-recor
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('signup/', signup, name='signup'),
+    path('signup/<int:pk>/', signup, name='signup_delete'),
     path('reset-password/', PasswordResetView.as_view(), name='password_reset'),
     path('reset-password/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset-password/form/<str:uid>/', password_reset_form, name='password_reset_form'),

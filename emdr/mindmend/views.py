@@ -11,13 +11,15 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, generics
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import status
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import CustomUserSerializer, ContactMessageSerializer, \
     UserProfileUpdateSerializer, ScoresSerializer, ScoreRecordSerializer, SubscriptionCreateSerializer, \
-     SubscriptionDetailSerializer
+    SubscriptionDetailSerializer
 from .models import CustomUser, Contact, Scores, Emotion, ScoreRecord, Subscription
 from django.conf import settings
 
@@ -58,6 +60,18 @@ class UserSignupViewSet(viewsets.ModelViewSet):
                  "data": {"id": user.id, "name": user.name, "email": user.email}},
                 status=status.HTTP_201_CREATED,
             )
+        except Exception as e:
+            return Response(
+                {"message": f"Error: {str(e)}", "data": {}},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            print(kwargs.get('pk'))  # Log the primary key
+            user = get_object_or_404(CustomUser, pk=kwargs.get('pk'))
+            user.delete()
+            return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response(
                 {"message": f"Error: {str(e)}", "data": {}},
@@ -263,6 +277,7 @@ class PasswordResetView(APIView):
             status=status.HTTP_200_OK
         )
 
+
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
 
@@ -290,7 +305,6 @@ class PasswordResetConfirmView(APIView):
             {"message": "Password has been reset successfully.", "data": {"user_id": user.id}},
             status=status.HTTP_200_OK
         )
-
 
 
 def password_reset_form(request, uid):
@@ -380,6 +394,7 @@ class UserTherapyInfoAPIView(APIView):
 
 from django.db.models import Count
 
+
 class UserScoreRecordsViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
@@ -401,7 +416,6 @@ class UserScoreRecordsViewSet(viewsets.ViewSet):
             {"message": "Score records retrieved successfully.", "data": serializer.data},
             status=status.HTTP_200_OK
         )
-
 
 
 class UserProfileUpdateAPIView(APIView):
@@ -522,7 +536,8 @@ class AppleLogin(APIView):
         user = CustomUser.objects.filter(uid=apple_id).first()
         if not user:
             if not email or not name:
-                return Response({'message': 'Email and name are required for the first time login', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'message': 'Email and name are required for the first time login', 'data': {}},
+                                status=status.HTTP_400_BAD_REQUEST)
             user = CustomUser.objects.filter(email=email).first()
             if user:
                 user.uid = apple_id
